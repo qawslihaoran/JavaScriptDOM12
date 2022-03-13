@@ -336,3 +336,127 @@ function displayAbbreviations() {
 addLoadEvent(stripeTables);
 addLoadEvent(highlightRows);
 addLoadEvent(displayAbbreviations);
+
+function resetFields(whichfrom) {
+    // if (Modernizr.input.placeholder) return;
+    for (let i = 0; i < whichfrom.elements.length; i++) {
+        var element = whichfrom.elements[i];
+        if (element.type == "submit") continue;
+        var check = element.placeholder || element.getAttribute("placeholder");
+        if (!check) continue;
+        element.onfocus = function() {
+            var text = this.placeholder || this.getAttribute("placeholder");
+            if (this.value == text) {
+                this.className = "";
+                this.value = "";
+            }
+        }
+        element.onblur = function() {
+            if (this.value == "") {
+                this.className = "placeholder";
+                this.value = this.placeholder || this.getAttribute("placeholder");
+            }
+        };
+        element.onblur();
+    }
+}
+
+function isFilled(field) {
+    if (field.value.replace(' ', '').length == 0) return false;
+    var placeholder = field.placeholder || field.getAttribute('placeholder');
+    return (field.value != placeholder);
+}
+
+function isEmail(field) {
+    return (field.value.indexOf("@") != -1 && field.value.indexOf(".") != -1);
+}
+
+function validateForm(whichfrom) {
+    for (var i = 0; i < whichform.elements.length; i++) {
+        var element = whichform.elements[i];
+        console.log(element.name);
+        if (element.required == "required") {
+            if (!isFilled(element.value)) {
+                alert("Please fill in the " + element.name + " field.");
+            }
+            return false;
+        }
+
+        if (element.type == "email") {
+            if (!isEmail(element)) {
+                alert("The " + element.name + " field must be a valid email address.");
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+
+function prepareForms() {
+    for (var i = 0; i < document.forms.length; i++) {
+        var thisform = document.forms[i];
+        resetFields(thisform);
+        thisform.onsubmit = function() {
+            if (!validateForm(this)) return false;
+            var article = document.getElementsByTagName("article");
+            if (submitFormWithAjax(this, article)) return false;
+            return true;
+        }
+    }
+}
+
+addLoadEvent(prepareForms);
+
+function getHTTPObject(params) {
+    return new XMLHttpRequest();
+}
+
+function dispalyAjaxloading(element) {
+    while (element.hasChildNodes()) {
+        element.removeChild(element.lastChild);
+    }
+    var content = document.createElement("img");
+    content.setAttribute("src", "images/loading.gif");
+    content.setAttribute("alt", "Loading...");
+    element.appendChild(content);
+}
+
+function submitFormWithAjax(whichform, target) {
+    var request = getHttpObject();
+    if (!request) {
+        console.log("Ajax load failed!");
+        return false;
+    }
+
+    displayAjaxLoading(target);
+
+    var dataParts = [];
+    var element;
+    for (var i = 0; i < whichform.elements.length; i++) {
+        element = whichform.elements[i];
+        dataParts[i] = element.name + "=" + encodeURIComponent(element.value);
+    }
+
+    var data = dataParts.join("&");
+    request.open("POST", whichform.getAttribute("action"), true);
+    request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+    request.onreadystatechange = function() {
+        if (request.readyState == 4) {
+            if (request.status == 200 || request.status == 0) {
+                var matches = request.responseText.match(/<article>([\s\S+])<\/article>/);
+                if (matches.length > 0) {
+                    target.innerHTML = matches[1];
+                } else {
+                    target.innerHTML = "<p>Oops, there was an error. Sorry. </p>";
+                }
+            } else {
+                target.innerHTML = "<p>" + request.statusText + "</p>";
+            }
+        }
+    };
+
+    request.send(data);
+    return true;
+}

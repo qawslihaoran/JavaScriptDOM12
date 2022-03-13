@@ -102,3 +102,8 @@
         color: #223;
         background-color: #cba;
     }
+    
+    input,
+    textarea {
+        color: grey;
+    }
